@@ -5,53 +5,44 @@ namespace App\Controller;
 
 use App\Message\SendMessage;
 use App\Repository\MessageRepository;
-use Controller\MessageControllerTest;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * @see MessageControllerTest
- * TODO: review both methods and also the `openapi.yaml` specification
- *       Add Comments for your Code-Review, so that the developer can understand why changes are needed.
- */
 class MessageController extends AbstractController
 {
-    /**
-     * TODO: cover this method with tests, and refactor the code (including other files that need to be refactored)
-     */
-    #[Route('/messages')]
-    public function list(Request $request, MessageRepository $messages): Response
+    #[Route('/messages', methods: ['GET'])]
+    public function list(Request $request, MessageRepository $messages): JsonResponse
     {
-        $messages = $messages->by($request);
-  
-        foreach ($messages as $key=>$message) {
-            $messages[$key] = [
-                'uuid' => $message->getUuid(),
-                'text' => $message->getText(),
-                'status' => $message->getStatus(),
-            ];
-        }
-        
-        return new Response(json_encode([
-            'messages' => $messages,
-        ], JSON_THROW_ON_ERROR), headers: ['Content-Type' => 'application/json']);
+        $messageEntities = $messages->by($request);
+
+        // Use array_map instead of manually looping through messages
+        $messages = array_map(static fn($message) => [
+            'uuid' => $message->getUuid(),
+            'text' => $message->getText(),
+            'status' => $message->getStatus(),
+        ], $messageEntities);
+
+        return new JsonResponse(['messages' => $messages], json: JSON_THROW_ON_ERROR); // JsonResponse class for better handling
     }
 
-    #[Route('/messages/send', methods: ['GET'])]
-    public function send(Request $request, MessageBusInterface $bus): Response
+    #[Route('/messages/send', methods: ['POST'])] // Changed from GET to POST
+    public function send(Request $request, MessageBusInterface $bus): JsonResponse
     {
-        $text = $request->query->get('text');
-        
+        // Retrieve `text` from JSON body instead of query parameters
+        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $text = $data['text'] ?? null;
+
         if (!$text) {
-            return new Response('Text is required', 400);
+            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST); // JsonResponse class for better handling
         }
 
         $bus->dispatch(new SendMessage($text));
-        
-        return new Response('Successfully sent', 204);
+
+        return new JsonResponse(['message' => 'Successfully sent'], Response::HTTP_NO_CONTENT); // JsonResponse class for better handling
     }
 }

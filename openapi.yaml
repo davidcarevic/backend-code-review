@@ -48,15 +48,20 @@ paths:
                   - text: "Thanks, I'm fine. How about you?"
                     status: "sent"
   /messages/send:
-    get:
-      summary: Send a Message
-      parameters:
-        - name: text
-          in: query
-          description: The text you want to send
-          required: true
+  post:
+    summary: Send a Message
+    requestBody:
+      required: true
+      content:
+        application/json:
           schema:
-            type: "string"
-      responses:
-        '204':
-          description: Successfully sent
+            type: "object"
+            properties:
+              text:
+                type: "string"
+                description: The text you want to send
+            required:
+              - text
+    responses:
+      '204':
+        description: Successfully sent
