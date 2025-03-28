@@ -14,14 +14,14 @@ use Symfony\Component\Uid\Uuid;
 class SendMessageHandlerTest extends TestCase
 {
     private EntityManagerInterface $entityManager;
-    private ClockInterface $clock; // Clock interface mock
+    private ClockInterface $clock; // ClockInterface mock
     private SendMessageHandler $handler;
 
     protected function setUp(): void
     {
         // Mock dependencies
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->clock = $this->createMock(ClockInterface::class); // Mocking ClockInterface
+        $this->clock = $this->createMock(ClockInterface::class); // ClockInterface mock
 
         // Instantiate handler with mocks
         $this->handler = new SendMessageHandler($this->entityManager, $this->clock);
