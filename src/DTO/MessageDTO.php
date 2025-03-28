@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\DTO;
+
+use App\Entity\Message;
+
+class MessageDTO
+{
+    public string $uuid;
+    public string $text;
+    public ?string $status;
+
+    public function __construct(string $uuid, string $text, ?string $status)
+    {
+        $this->uuid = $uuid;
+        $this->text = $text;
+        $this->status = $status;
+    }
+
+    public static function fromEntity(Message $message): self
+    {
+        return new self(
+            $message->getUuid(),
+            $message->getText(),
+            $message->getStatus()
+        );
+    }
+}

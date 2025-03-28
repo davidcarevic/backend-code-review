@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\DTO\MessageDTO;
 use App\Message\SendMessage;
 use App\Repository\MessageRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,29 +21,29 @@ class MessageController extends AbstractController
     {
         $messageEntities = $messages->by($request);
 
-        // Use array_map instead of manually looping through messages
-        $messages = array_map(static fn($message) => [
-            'uuid' => $message->getUuid(),
-            'text' => $message->getText(),
-            'status' => $message->getStatus(),
-        ], $messageEntities);
+        // Convert each Message entity to MessageDTO
+        $messageDTOs = array_map(fn($message) => MessageDTO::fromEntity($message), $messageEntities);
 
-        return new JsonResponse(['messages' => $messages], json: JSON_THROW_ON_ERROR); // JsonResponse class for better handling
+        return new JsonResponse(['messages' => $messageDTOs], json: JSON_THROW_ON_ERROR);
     }
 
-    #[Route('/messages/send', methods: ['POST'])] // Changed from GET to POST
+    #[Route('/messages/send', methods: ['POST'])] // Use POST instead of GET
     public function send(Request $request, MessageBusInterface $bus): JsonResponse
     {
-        // Retrieve `text` from JSON body instead of query parameters
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
         $text = $data['text'] ?? null;
 
         if (!$text) {
-            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST); // JsonResponse class for better handling
+            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST);
         }
 
         $bus->dispatch(new SendMessage($text));
 
-        return new JsonResponse(['message' => 'Successfully sent'], Response::HTTP_NO_CONTENT); // JsonResponse class for better handling
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT); // No content needed for 204 response
     }
 }
