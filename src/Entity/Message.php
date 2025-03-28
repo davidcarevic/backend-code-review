@@ -3,14 +3,12 @@
 namespace App\Entity;
 
 use App\Repository\MessageRepository;
-use DateTime;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Ramsey\Uuid\Uuid; // Added for UUID generation
+use DateTimeImmutable; // Using immutable DateTime for better consistency
 
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
-/**
- * TODO: Review Message class
- */
 class Message
 {
     #[ORM\Id]
@@ -18,7 +16,7 @@ class Message
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::GUID)]
+    #[ORM\Column(type: Types::GUID, unique: true)]
     private ?string $uuid = null;
 
     #[ORM\Column(length: 255)]
@@ -26,9 +24,15 @@ class Message
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $status = null;
-    
-    #[ORM\Column(type: 'datetime')]
-    private DateTime $createdAt;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)] // Changed to DATETIME_IMMUTABLE
+    private ?DateTimeImmutable $createdAt = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new DateTimeImmutable(); // Automatically sets creation time
+        $this->uuid = Uuid::uuid4()->toString(); // Generates a UUID on object creation
+    }
 
     public function getId(): ?int
     {
@@ -40,10 +44,9 @@ class Message
         return $this->uuid;
     }
 
-    public function setUuid(string $uuid): static
+    public function setUuid(string $uuid): self // Changed return type from `static` to `self`
     {
         $this->uuid = $uuid;
-
         return $this;
     }
 
@@ -52,10 +55,9 @@ class Message
         return $this->text;
     }
 
-    public function setText(string $text): static
+    public function setText(string $text): self // Changed return type from `static` to `self`
     {
         $this->text = $text;
-
         return $this;
     }
 
@@ -64,22 +66,20 @@ class Message
         return $this->status;
     }
 
-    public function setStatus(string $status): static
+    public function setStatus(?string $status): self // Changed return type from `static` to `self`
     {
         $this->status = $status;
-
         return $this;
     }
 
-    public function getCreatedAt(): DateTime
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(DateTime $createdAt): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): self // Changed return type from `static` to `self`
     {
         $this->createdAt = $createdAt;
-        
         return $this;
     }
 }
