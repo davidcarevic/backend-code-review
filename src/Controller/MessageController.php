@@ -20,12 +20,11 @@ class MessageController extends AbstractController
     public function list(Request $request, MessageRepository $messages): JsonResponse
     {
         $messageEntities = $messages->by($request);
-
-        // Convert each Message entity to MessageDTO
         $messageDTOs = array_map(fn($message) => MessageDTO::fromEntity($message), $messageEntities);
-
-        return new JsonResponse(['messages' => $messageDTOs], json: true); // Fixed issue here
+    
+        return $this->json(['messages' => $messageDTOs]);
     }
+    
 
     #[Route('/messages/send', methods: ['POST'])] // Use POST instead of GET
     public function send(Request $request, MessageBusInterface $bus): JsonResponse

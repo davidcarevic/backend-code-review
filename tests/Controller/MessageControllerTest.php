@@ -10,110 +10,115 @@ use App\Repository\MessageRepository;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Zenstruck\Messenger\Test\InteractsWithMessenger;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
+/**
+ * Integration tests for the MessageController.
+ * Uses WebTestCase to simulate real HTTP requests.
+ */
 class MessageControllerTest extends WebTestCase
 {
     use InteractsWithMessenger;
 
-    private $messageRepository;
-
-    protected function setUp(): void
+    /**
+     * Inject a mock MessageRepository into the container with custom return data.
+     *
+     * @param Message[] $returnMessages
+     */
+    private function mockMessageRepository(array $returnMessages = []): void
     {
-        parent::setUp();
+        $mockRepo = $this->createMock(MessageRepository::class);
+        $mockRepo->method('by')->willReturn($returnMessages);
 
-        // Mock the MessageRepository dependency
-        $this->messageRepository = $this->createMock(MessageRepository::class);
+        static::getContainer()->set(MessageRepository::class, $mockRepo);
     }
 
-    /**
-     * Test that the /messages endpoint returns a successful response.
-     */
     public function test_list(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/messages'); // Make sure this matches your controller's route
+        $this->mockMessageRepository([]); // Simulate no messages
+
+        $client->request('GET', '/messages');
 
         $this->assertResponseIsSuccessful();
 
-        // Decode the response and check its structure
-        $response = $client->getResponse()->getContent();
-        $messages = json_decode($response, true);
+        $messages = json_decode($client->getResponse()->getContent(), true);
 
-        // Assert that the response is an array and contains the messages key
         $this->assertIsArray($messages);
         $this->assertArrayHasKey('messages', $messages);
     }
 
-    /**
-     * Test that the /messages endpoint returns messages when they exist.
-     */
     public function test_list_returns_messages(): void
     {
         $client = static::createClient();
 
-        // Mock some messages to return from the repository
-        $message1 = new Message();
-        $message1->setText('Hello');
-        
-        $message2 = new Message();
-        $message2->setText('World');
+        $message1 = (new Message())
+            ->setUuid(Uuid::v6()->toRfc4122())
+            ->setText('Hello')
+            ->setStatus('sent')
+            ->setCreatedAt(new \DateTimeImmutable());
 
-        // Mock the `by` method instead of `findAll` to match the controller logic
-        $this->messageRepository
-            ->method('by') // Change from `findAll` to `by`
-            ->willReturn([$message1, $message2]);
+        $message2 = (new Message())
+            ->setUuid(Uuid::v6()->toRfc4122())
+            ->setText('World')
+            ->setStatus('read')
+            ->setCreatedAt(new \DateTimeImmutable());
 
-        // Call the list endpoint
+        $this->mockMessageRepository([$message1, $message2]);
+
         $client->request('GET', '/messages');
 
         $this->assertResponseIsSuccessful();
-        $this->assertJsonContains([
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        $this->assertSame([
             'messages' => [
-                ['text' => 'Hello'],
-                ['text' => 'World'],
+                [
+                    'uuid' => $message1->getUuid(),
+                    'text' => 'Hello',
+                    'status' => 'sent',
+                ],
+                [
+                    'uuid' => $message2->getUuid(),
+                    'text' => 'World',
+                    'status' => 'read',
+                ],
             ],
-        ]);
+        ], $response);
     }
 
-    /**
-     * Test that the /messages endpoint returns an empty array when no messages exist.
-     */
     public function test_list_returns_empty_array_when_no_messages(): void
     {
         $client = static::createClient();
+        $this->mockMessageRepository([]); // No messages
 
-        // Mock an empty response from the repository
-        $this->messageRepository
-            ->method('by') // Mock `by` method
-            ->willReturn([]);
-
-        // Call the list endpoint
         $client->request('GET', '/messages');
 
         $this->assertResponseIsSuccessful();
-        $this->assertJsonContains([
-            'messages' => [],
-        ]);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        $this->assertSame(['messages' => []], $response);
     }
 
-    /**
-     * Test sending a message.
-     */
     public function test_that_it_sends_a_message(): void
     {
         $client = static::createClient();
 
-        // Send a POST request with a JSON body
-        $client->request('POST', '/messages/send', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
-            'text' => 'Hello World',
-        ]));
+        $client->request(
+            'POST',
+            '/messages/send',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['text' => 'Hello World'])
+        );
 
-        // Assert the response is successful (204 No Content)
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
-        // Check if the message was dispatched to the correct handler
         $this->transport('sync')
             ->queue()
-            ->assertContains(SendMessage::class, 1); // Ensure SendMessage was dispatched
+            ->assertContains(SendMessage::class);
     }
 }
