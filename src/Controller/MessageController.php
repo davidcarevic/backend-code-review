@@ -24,7 +24,7 @@ class MessageController extends AbstractController
         // Convert each Message entity to MessageDTO
         $messageDTOs = array_map(fn($message) => MessageDTO::fromEntity($message), $messageEntities);
 
-        return new JsonResponse(['messages' => $messageDTOs], json: JSON_THROW_ON_ERROR);
+        return new JsonResponse(['messages' => $messageDTOs], json: true); // Fixed issue here
     }
 
     #[Route('/messages/send', methods: ['POST'])] // Use POST instead of GET
@@ -32,19 +32,19 @@ class MessageController extends AbstractController
     {
         // Try catch for error handling
         try {
-            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+            $data = (array) json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR); // Explicitly cast to array
         } catch (\JsonException $e) {
-            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST); // Using JSONResponse class
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        $text = $data['text'] ?? null;
+        $text = isset($data['text']) && is_string($data['text']) ? $data['text'] : '';
 
-        if (!$text) {
-            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST); // Using JSONResponse class
+        if ($text === '') {
+            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST);
         }
 
         $bus->dispatch(new SendMessage($text));
 
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT); // No content needed for 204 response
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

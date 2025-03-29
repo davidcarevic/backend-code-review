@@ -22,8 +22,8 @@ class MessageDTO
     public static function fromEntity(Message $message): self
     {
         return new self(
-            $message->getUuid(),
-            $message->getText(),
+            (string) $message->getUuid(),  // Cast to string to prevent null errors
+            (string) $message->getText(),  // Cast to string to prevent null errors
             $message->getStatus()
         );
     }

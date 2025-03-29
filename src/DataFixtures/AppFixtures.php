@@ -20,7 +20,7 @@ class AppFixtures extends Fixture
             $message->setUuid(Uuid::v6()->toRfc4122());
             $message->setText($faker->sentence);
             $message->setStatus(random(['sent', 'read']));
-            $message->setCreatedAt(new \DateTime());
+            $message->setCreatedAt(new \DateTimeImmutable()); // Use DateTimeImmutable instead of DateTime
             
             $manager->persist($message);
         }
