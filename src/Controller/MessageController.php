@@ -30,16 +30,17 @@ class MessageController extends AbstractController
     #[Route('/messages/send', methods: ['POST'])] // Use POST instead of GET
     public function send(Request $request, MessageBusInterface $bus): JsonResponse
     {
+        // Try catch for error handling
         try {
             $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST); // Using JSONResponse class
         }
 
         $text = $data['text'] ?? null;
 
         if (!$text) {
-            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Text is required'], Response::HTTP_BAD_REQUEST); // Using JSONResponse class
         }
 
         $bus->dispatch(new SendMessage($text));
