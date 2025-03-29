@@ -20,6 +20,7 @@ class MessageController extends AbstractController
     public function list(Request $request, MessageRepository $messages): JsonResponse
     {
         $messageEntities = $messages->by($request);
+        // Convert each message to DTO and map them
         $messageDTOs = array_map(fn($message) => MessageDTO::fromEntity($message), $messageEntities);
     
         return $this->json(['messages' => $messageDTOs]);
